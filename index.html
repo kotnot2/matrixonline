@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор Мультиплеер — Вход</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(145deg, #0b1a2e, #1a2f44);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(22, 40, 62, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 60px;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        h1 {
+            text-align: center;
+            color: #b9d8ff;
+            font-size: 2rem;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 0 #0a1a2a;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            color: #b0d0f0;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        input {
+            width: 100%;
+            padding: 14px 20px;
+            background: #0f1f30;
+            border: 1px solid #2d4b66;
+            border-radius: 40px;
+            color: #e3f0ff;
+            font-size: 1.1rem;
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus {
+            border-color: #70a0c0;
+            box-shadow: 0 0 20px rgba(47, 95, 122, 0.3);
+        }
+        input::placeholder {
+            color: #3b5b79;
+        }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: #d48c3c;
+            border: none;
+            border-radius: 40px;
+            color: #fff6e0;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #7a4f1e;
+            transition: 0.07s ease;
+            margin-top: 10px;
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #7a4f1e;
+        }
+        .btn-secondary {
+            background: #223f5a;
+            box-shadow: 0 6px 0 #0a1a2a;
+            margin-top: 12px;
+        }
+        .btn-secondary:active {
+            box-shadow: 0 2px 0 #0a1a2a;
+        }
+        .or-divider {
+            text-align: center;
+            color: #3f6480;
+            margin: 20px 0 10px;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+        }
+        .status {
+            text-align: center;
+            color: #b3d6f0;
+            font-size: 0.9rem;
+            margin-top: 12px;
+        }
+        .error {
+            color: #ff7a7a;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #2d4b66;
+            border-top-color: #b3e0ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @media (max-width: 480px) {
+            .container { padding: 25px; }
+            h1 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Калькулятор<br>Мультиплеер</h1>
+        
+        <div class="form-group">
+            <label>👤 Ваше имя</label>
+            <input type="text" id="playerName" placeholder="Введите никнейм" value="Игрок" maxlength="15">
+        </div>
+        
+        <div class="form-group">
+            <label>🔑 Код комнаты</label>
+            <input type="text" id="roomCode" placeholder="Оставьте пустым для новой комнаты" maxlength="6">
+        </div>
+        
+        <button class="btn" id="joinBtn">🚀 Войти / Создать комнату</button>
+        
+        <div class="or-divider">— или —</div>
+        
+        <button class="btn btn-secondary" id="createBtn">✨ Создать новую комнату</button>
+        
+        <div class="status" id="statusMessage">Подключение к серверу...</div>
+    </div>
+
+    <script>
+        // Конфигурация
+        const WS_URL = 'ws://localhost:8765'; // Замените на ваш URL при деплое
+        
+        const playerNameInput = document.getElementById('playerName');
+        const roomCodeInput = document.getElementById('roomCode');
+        const joinBtn = document.getElementById('joinBtn');
+        const createBtn = document.getElementById('createBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        
+        let ws = null;
+        let isConnecting = false;
+        
+        function setStatus(text, isError = false) {
+            statusMessage.innerHTML = text;
+            statusMessage.className = 'status' + (isError ? ' error' : '');
+        }
+        
+        function connectToServer(name, roomId) {
+            if (isConnecting) return;
+            
+            setStatus('⏳ Подключение...');
+            isConnecting = true;
+            joinBtn.disabled = true;
+            createBtn.disabled = true;
+            
+            ws = new WebSocket(WS_URL);
+            
+            ws.onopen = function() {
+                setStatus('✅ Подключено! Отправка данных...');
+                ws.send(JSON.stringify({
+                    type: 'join',
+                    name: name,
+                    room_id: roomId
+                }));
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'init') {
+                        // Успешно подключились к комнате
+                        setStatus(`✅ Подключено! Комната: ${data.room_id}`);
+                        localStorage.setItem('player_id', data.player_id);
+                        localStorage.setItem('room_id', data.room_id);
+                        localStorage.setItem('player_name', name);
+                        
+                        // Переходим в игру
+                        setTimeout(() => {
+                            window.location.href = 'game.html';
+                        }, 500);
+                    } else {
+                        setStatus('⚠️ Неожиданный ответ от сервера');
+                    }
+                } catch (e) {
+                    setStatus('❌ Ошибка обработки ответа', true);
+                }
+                isConnecting = false;
+                joinBtn.disabled = false;
+                createBtn.disabled = false;
+            };
+            
+            ws.onerror = function() {
+                setStatus('❌ Ошибка подключения к серверу. Проверьте адрес.', true);
+                isConnecting = false;
+                joinBtn.disabled = false;
+                createBtn.disabled = false;
+            };
+            
+            ws.onclose = function() {
+                if (!isConnecting) {
+                    setStatus('❌ Соединение закрыто', true);
+                }
+                isConnecting = false;
+                joinBtn.disabled = false;
+                createBtn.disabled = false;
+            };
+            
+            // Таймаут подключения
+            setTimeout(() => {
+                if (isConnecting) {
+                    ws.close();
+                    setStatus('❌ Таймаут подключения', true);
+                    isConnecting = false;
+                    joinBtn.disabled = false;
+                    createBtn.disabled = false;
+                }
+            }, 10000);
+        }
+        
+        function handleJoin() {
+            const name = playerNameInput.value.trim() || 'Аноним';
+            const roomCode = roomCodeInput.value.trim().toUpperCase();
+            
+            if (!name) {
+                setStatus('❌ Введите имя!', true);
+                return;
+            }
+            
+            // Проверяем код комнаты (только буквы и цифры)
+            if (roomCode && !/^[A-Z0-9]+$/.test(roomCode)) {
+                setStatus('❌ Код комнаты должен содержать только буквы и цифры', true);
+                return;
+            }
+            
+            connectToServer(name, roomCode);
+        }
+        
+        joinBtn.addEventListener('click', handleJoin);
+        
+        createBtn.addEventListener('click', function() {
+            const name = playerNameInput.value.trim() || 'Аноним';
+            if (!name) {
+                setStatus('❌ Введите имя!', true);
+                return;
+            }
+            // Оставляем комнату пустой для создания новой
+            roomCodeInput.value = '';
+            connectToServer(name, '');
+        });
+        
+        // Enter для отправки
+        playerNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleJoin();
+        });
+        roomCodeInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleJoin();
+        });
+        
+        // Проверяем подключение к серверу
+        async function checkServer() {
+            try {
+                // Просто проверяем, доступен ли сервер
+                const testWs = new WebSocket(WS_URL);
+                testWs.onopen = function() {
+                    setStatus('✅ Сервер доступен');
+                    testWs.close();
+                };
+                testWs.onerror = function() {
+                    setStatus('⚠️ Сервер не отвечает. Проверьте адрес.', true);
+                };
+                setTimeout(() => {
+                    if (testWs.readyState !== WebSocket.OPEN) {
+                        setStatus('⚠️ Сервер не отвечает', true);
+                    }
+                }, 3000);
+            } catch (e) {
+                setStatus('⚠️ Не удалось подключиться к серверу', true);
+            }
+        }
+        
+        // Запускаем проверку
+        checkServer();
+    </script>
+</body>
+</html>
